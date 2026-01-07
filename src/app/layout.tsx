@@ -1,13 +1,12 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import '@rainbow-me/rainbowkit/styles.css';
 import Navbar from "../components/Navbar";
 import { Web3Provider } from "../providers/Web3Provider";
 
-const inter = Inter({ 
+const inter = Inter({
   subsets: ["latin"],
-  variable: "--font-inter", 
+  variable: "--font-inter",
   display: 'swap',
 });
 

@@ -9,12 +9,12 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // The "Deep Jungle" Backgrounds
+        // The "Deep Navy" Backgrounds (PRD Spec)
         eco: {
-          base: '#050B07',    // The darkest background (Main Page)
-          card: '#0A120D',    // Card background
-          surface: '#131816', // Lighter surface (Sidebar/Inputs)
-          border: '#1A261E',  // Subtle borders
+          base: '#020412',    // Deep Navy / Almost Black
+          card: '#0A1124',    // Dark Blue-Grey Card
+          surface: '#111B33', // Lighter Navy Surface
+          border: '#1E2C4F',  // Navy Border
         },
         // The "Neon" Accents
         brand: {
@@ -31,7 +31,7 @@ const config: Config = {
         }
       },
       fontFamily: {
-        sans: ['var(--font-inter)'], 
+        sans: ['var(--font-inter)'],
       },
       backgroundImage: {
         'gradient-glass': 'linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.00) 100%)',

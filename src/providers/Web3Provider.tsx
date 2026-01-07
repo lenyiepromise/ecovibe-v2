@@ -1,27 +1,25 @@
 'use client';
 
 import React from 'react';
-import { WagmiProvider } from 'wagmi';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { RainbowKitProvider, darkTheme } from '@rainbow-me/rainbowkit';
-import { config } from '@/config/wagmi';
-
-const queryClient = new QueryClient();
+import { PrivyProvider } from '@privy-io/react-auth';
+import { scrollSepolia } from 'viem/chains';
 
 export function Web3Provider({ children }: { children: React.ReactNode }) {
   return (
-    <WagmiProvider config={config}>
-      <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider 
-          theme={darkTheme({
-            accentColor: '#00F090',
-            accentColorForeground: 'black',
-            borderRadius: 'medium',
-          })}
-        >
-          {children}
-        </RainbowKitProvider>
-      </QueryClientProvider>
-    </WagmiProvider>
+    <PrivyProvider
+      appId="your-privy-app-id" // TODO: Replace with your actual Privy App ID
+      config={{
+        loginMethods: ['email', 'wallet'],
+        appearance: {
+          theme: 'dark',
+          accentColor: '#00F090',
+          logo: 'https://your-logo-url.com/logo.png', // Optional
+        },
+        defaultChain: scrollSepolia,
+        supportedChains: [scrollSepolia],
+      }}
+    >
+      {children}
+    </PrivyProvider>
   );
 }
