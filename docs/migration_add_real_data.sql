@@ -1,27 +1,9 @@
 -- =====================================================
--- EcoVibe v2 - Complete Database Schema
+-- EcoVibe v2 - Migration: Add Real Data Tables
+-- Run this if you already have the campaigns table
 -- =====================================================
 
--- 1. Campaigns Table (Missions)
-CREATE TABLE IF NOT EXISTS campaigns (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-  title TEXT NOT NULL,
-  description TEXT,
-  location TEXT,
-  reward TEXT,
-  token TEXT DEFAULT 'ECO',
-  image TEXT,
-  difficulty INTEGER DEFAULT 1,
-  total_spots INTEGER DEFAULT 5,
-  joined INTEGER DEFAULT 0,
-  is_verified BOOLEAN DEFAULT FALSE,
-  type TEXT DEFAULT 'public', -- 'public' or 'private'
-  creator_address TEXT,
-  tags TEXT[] DEFAULT '{}'::TEXT[]
-);
-
--- 2. User Profiles Table
+-- 1. User Profiles Table
 CREATE TABLE IF NOT EXISTS user_profiles (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   wallet_address TEXT UNIQUE NOT NULL,
@@ -36,30 +18,30 @@ CREATE TABLE IF NOT EXISTS user_profiles (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 3. Activity History Table
+-- 2. Activity History Table
 CREATE TABLE IF NOT EXISTS activity_history (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_address TEXT NOT NULL,
   campaign_id UUID REFERENCES campaigns(id) ON DELETE CASCADE,
-  activity_type TEXT NOT NULL, -- 'cleanup', 'verification', 'reward'
+  activity_type TEXT NOT NULL,
   impact_kg DECIMAL DEFAULT 0,
   reward_amount DECIMAL DEFAULT 0,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 4. Badges Table
+-- 3. Badges Table
 CREATE TABLE IF NOT EXISTS badges (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   name TEXT NOT NULL,
   description TEXT,
   icon TEXT,
-  rarity TEXT DEFAULT 'common', -- 'common', 'rare', 'epic', 'legendary'
-  requirement_type TEXT, -- 'cleanups', 'kg_collected', 'specific_location'
+  rarity TEXT DEFAULT 'common',
+  requirement_type TEXT,
   requirement_value INTEGER,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 5. User Badges Table
+-- 4. User Badges Table
 CREATE TABLE IF NOT EXISTS user_badges (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_address TEXT NOT NULL,
@@ -68,12 +50,12 @@ CREATE TABLE IF NOT EXISTS user_badges (
   UNIQUE(user_address, badge_id)
 );
 
--- 6. Campaign Participations Table
+-- 5. Campaign Participations Table
 CREATE TABLE IF NOT EXISTS campaign_participations (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   campaign_id UUID REFERENCES campaigns(id) ON DELETE CASCADE,
   user_address TEXT NOT NULL,
-  status TEXT DEFAULT 'pending', -- 'pending', 'verified', 'rejected'
+  status TEXT DEFAULT 'pending',
   proof_url TEXT,
   verified_at TIMESTAMP WITH TIME ZONE,
   reward_claimed BOOLEAN DEFAULT FALSE,
@@ -82,11 +64,9 @@ CREATE TABLE IF NOT EXISTS campaign_participations (
 );
 
 -- =====================================================
--- Indexes for Performance
+-- Indexes
 -- =====================================================
 
-CREATE INDEX IF NOT EXISTS idx_campaigns_creator ON campaigns(creator_address);
-CREATE INDEX IF NOT EXISTS idx_campaigns_type ON campaigns(type);
 CREATE INDEX IF NOT EXISTS idx_user_profiles_wallet ON user_profiles(wallet_address);
 CREATE INDEX IF NOT EXISTS idx_activity_user ON activity_history(user_address);
 CREATE INDEX IF NOT EXISTS idx_activity_created ON activity_history(created_at DESC);
@@ -95,28 +75,20 @@ CREATE INDEX IF NOT EXISTS idx_participations_campaign ON campaign_participation
 CREATE INDEX IF NOT EXISTS idx_user_badges_user ON user_badges(user_address);
 
 -- =====================================================
--- Row Level Security (RLS)
+-- Row Level Security
 -- =====================================================
 
--- Enable RLS
-ALTER TABLE campaigns ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE activity_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE badges ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_badges ENABLE ROW LEVEL SECURITY;
 ALTER TABLE campaign_participations ENABLE ROW LEVEL SECURITY;
 
--- Campaigns Policies
-CREATE POLICY "Enable read access for all users" ON campaigns
-  FOR SELECT USING (true);
+-- User Profiles Policies (drop first if exists to avoid conflicts)
+DROP POLICY IF EXISTS "Users can view all profiles" ON user_profiles;
+DROP POLICY IF EXISTS "Users can insert their own profile" ON user_profiles;
+DROP POLICY IF EXISTS "Users can update their own profile" ON user_profiles;
 
-CREATE POLICY "Enable insert for authenticated users" ON campaigns
-  FOR INSERT WITH CHECK (true);
-
-CREATE POLICY "Enable update for campaign creators" ON campaigns
-  FOR UPDATE USING (true);
-
--- User Profiles Policies
 CREATE POLICY "Users can view all profiles" ON user_profiles
   FOR SELECT USING (true);
 
@@ -127,6 +99,9 @@ CREATE POLICY "Users can update their own profile" ON user_profiles
   FOR UPDATE USING (true);
 
 -- Activity History Policies
+DROP POLICY IF EXISTS "Users can view all activity" ON activity_history;
+DROP POLICY IF EXISTS "Users can insert their own activity" ON activity_history;
+
 CREATE POLICY "Users can view all activity" ON activity_history
   FOR SELECT USING (true);
 
@@ -134,10 +109,15 @@ CREATE POLICY "Users can insert their own activity" ON activity_history
   FOR INSERT WITH CHECK (true);
 
 -- Badges Policies
+DROP POLICY IF EXISTS "Everyone can view badges" ON badges;
+
 CREATE POLICY "Everyone can view badges" ON badges
   FOR SELECT USING (true);
 
 -- User Badges Policies
+DROP POLICY IF EXISTS "Everyone can view user badges" ON user_badges;
+DROP POLICY IF EXISTS "Users can insert their own badges" ON user_badges;
+
 CREATE POLICY "Everyone can view user badges" ON user_badges
   FOR SELECT USING (true);
 
@@ -145,6 +125,10 @@ CREATE POLICY "Users can insert their own badges" ON user_badges
   FOR INSERT WITH CHECK (true);
 
 -- Participations Policies
+DROP POLICY IF EXISTS "Everyone can view participations" ON campaign_participations;
+DROP POLICY IF EXISTS "Users can insert their own participations" ON campaign_participations;
+DROP POLICY IF EXISTS "Users can update their own participations" ON campaign_participations;
+
 CREATE POLICY "Everyone can view participations" ON campaign_participations
   FOR SELECT USING (true);
 
@@ -176,8 +160,7 @@ ON CONFLICT DO NOTHING;
 CREATE OR REPLACE FUNCTION update_user_stats_on_verification()
 RETURNS TRIGGER AS $$
 BEGIN
-  IF NEW.status = 'verified' AND OLD.status != 'verified' THEN
-    -- Get campaign details
+  IF NEW.status = 'verified' AND (OLD.status IS NULL OR OLD.status != 'verified') THEN
     DECLARE
       campaign_reward TEXT;
       campaign_difficulty INTEGER;
@@ -185,21 +168,18 @@ BEGIN
       SELECT reward, difficulty INTO campaign_reward, campaign_difficulty
       FROM campaigns WHERE id = NEW.campaign_id;
       
-      -- Update user profile
       UPDATE user_profiles
       SET 
         total_cleanups = total_cleanups + 1,
         total_earnings = total_earnings + COALESCE(campaign_reward::DECIMAL, 0),
-        trash_removed_kg = trash_removed_kg + 5, -- Default 5kg per cleanup
-        co2_offset_kg = co2_offset_kg + 2, -- Default 2kg CO2 offset
+        trash_removed_kg = trash_removed_kg + 5,
+        co2_offset_kg = co2_offset_kg + 2,
         updated_at = NOW()
       WHERE wallet_address = NEW.user_address;
       
-      -- Create activity history entry
       INSERT INTO activity_history (user_address, campaign_id, activity_type, impact_kg, reward_amount)
       VALUES (NEW.user_address, NEW.campaign_id, 'verification', 5, COALESCE(campaign_reward::DECIMAL, 0));
       
-      -- Update campaign joined count
       UPDATE campaigns
       SET joined = joined + 1
       WHERE id = NEW.campaign_id;
@@ -210,13 +190,15 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Trigger for participation verification
+-- Drop trigger if exists, then create
+DROP TRIGGER IF EXISTS on_participation_verified ON campaign_participations;
+
 CREATE TRIGGER on_participation_verified
   AFTER UPDATE ON campaign_participations
   FOR EACH ROW
   EXECUTE FUNCTION update_user_stats_on_verification();
 
--- Function to auto-create user profile on first activity
+-- Function to auto-create user profile
 CREATE OR REPLACE FUNCTION create_user_profile_if_not_exists()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -228,7 +210,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Trigger for auto-creating profiles
+-- Drop trigger if exists, then create
+DROP TRIGGER IF EXISTS auto_create_profile_on_participation ON campaign_participations;
+
 CREATE TRIGGER auto_create_profile_on_participation
   BEFORE INSERT ON campaign_participations
   FOR EACH ROW

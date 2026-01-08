@@ -1,8 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePrivy } from '@privy-io/react-auth';
-import { LayoutDashboard, Compass, Trophy, Store } from 'lucide-react';
+import { LayoutDashboard, Compass, Trophy, Store, Menu, X } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 
 function AuthButton() {
@@ -32,7 +33,7 @@ function AuthButton() {
 
 export default function Navbar() {
   const pathname = usePathname();
-  // ... rest of the component
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const navLinks = [
     { name: 'Missions', href: '/', icon: Compass },
@@ -42,19 +43,19 @@ export default function Navbar() {
   ];
 
   return (
-    <nav className="fixed top-0 w-full z-50 bg-eco-base/80 backdrop-blur-md border-b border-eco-border">
+    <nav className="fixed top-0 w-full z-50 bg-eco-base/95 backdrop-blur-md border-b border-eco-border">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
 
           {/* Logo */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 z-50">
             <div className="w-8 h-8 bg-brand-green rounded-lg flex items-center justify-center">
               <span className="text-black font-bold text-lg">E</span>
             </div>
             <span className="text-xl font-bold text-white tracking-tight">EcoVibe</span>
           </div>
 
-          {/* Center Links */}
+          {/* Desktop Links */}
           <div className="hidden md:flex items-center gap-1">
             {navLinks.map((link) => {
               const isActive = pathname === link.href;
@@ -74,12 +75,48 @@ export default function Navbar() {
             })}
           </div>
 
-          {/* Wallet Button */}
-          <div>
-            <AuthButton />
+          {/* Actions & Mobile Toggle */}
+          <div className="flex items-center gap-4">
+            <div className="hidden md:block">
+              <AuthButton />
+            </div>
+
+            {/* Mobile Menu Toggle */}
+            <button
+              className="md:hidden text-white p-2"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            >
+              {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
           </div>
         </div>
       </div>
+
+      {/* Mobile Menu Overlay */}
+      {isMobileMenuOpen && (
+        <div className="md:hidden absolute top-20 left-0 w-full bg-eco-base border-b border-eco-border p-4 flex flex-col gap-4 shadow-2xl animate-in slide-in-from-top-4 duration-200">
+          {navLinks.map((link) => {
+            const isActive = pathname === link.href;
+            return (
+              <Link
+                key={link.name}
+                href={link.href}
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={`flex items-center gap-3 px-4 py-4 rounded-xl text-base font-medium transition-all ${isActive
+                  ? 'bg-brand-green/10 text-brand-green border border-brand-green/20'
+                  : 'text-text-muted hover:text-white hover:bg-white/5'
+                  }`}
+              >
+                <link.icon size={20} />
+                {link.name}
+              </Link>
+            );
+          })}
+          <div className="pt-4 border-t border-white/5">
+            <AuthButton />
+          </div>
+        </div>
+      )}
     </nav>
   );
 }

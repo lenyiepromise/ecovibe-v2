@@ -41,12 +41,37 @@ export default function MissionCard({ mission, onParticipate }: MissionCardProps
       {/* 2. Content Body */}
       <div className="p-5 flex-1 flex flex-col">
         <div className="mb-4">
-          <h3 className="text-lg font-bold text-white mb-1 group-hover:text-brand-green transition-colors line-clamp-1">
+          <h3 className="text-lg font-bold text-white mb-2 group-hover:text-brand-green transition-colors line-clamp-1">
             {mission.title}
           </h3>
-          <div className="flex items-center text-text-muted text-xs gap-1.5">
+          <div className="flex items-center text-text-muted text-xs gap-1.5 mb-3">
             <MapPin size={12} />
             <span>{mission.location}</span>
+          </div>
+
+          {/* Sponsor Info */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-full bg-brand-green/20 flex items-center justify-center">
+                <span className="text-brand-green text-xs font-bold">
+                  {mission.creator_address ? mission.creator_address[2].toUpperCase() : 'S'}
+                </span>
+              </div>
+              <span className="text-xs text-text-muted">
+                {mission.creator_address ? `${mission.creator_address.slice(0, 6)}...` : 'Sponsor'}
+              </span>
+            </div>
+
+            {/* Rating Stars */}
+            <div className="flex gap-0.5">
+              {[...Array(5)].map((_, i) => (
+                <Star
+                  key={i}
+                  size={12}
+                  className={i < 4 ? "fill-yellow-500 text-yellow-500" : "fill-gray-700 text-gray-700"}
+                />
+              ))}
+            </div>
           </div>
         </div>
 

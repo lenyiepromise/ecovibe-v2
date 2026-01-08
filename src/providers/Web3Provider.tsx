@@ -7,7 +7,7 @@ import { scrollSepolia } from 'viem/chains';
 export function Web3Provider({ children }: { children: React.ReactNode }) {
   return (
     <PrivyProvider
-      appId="your-privy-app-id" // TODO: Replace with your actual Privy App ID
+      appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID || ''}
       config={{
         loginMethods: ['email', 'wallet'],
         appearance: {
