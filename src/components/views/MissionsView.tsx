@@ -12,8 +12,8 @@ import { Campaign } from '@/types';
 
 export default function MissionsView() {
     const { authenticated } = usePrivy();
-    const { campaigns, loading, createCampaign, refreshCampaigns } = useCampaigns();
-    const [activeTab, setActiveTab] = useState<'overview' | 'marketplace'>('overview');
+    const { campaigns, loading, createCampaign, refresh } = useCampaigns();
+
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [selectedMission, setSelectedMission] = useState<Campaign | null>(null);
 
