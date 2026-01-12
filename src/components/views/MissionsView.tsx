@@ -8,14 +8,30 @@ import MissionFilters from '@/components/MissionFilters';
 import CreateCampaignModal from '@/components/CreateCampaignModal';
 import VerificationModal from '@/components/VerificationModal';
 import { Map, List, Plus } from 'lucide-react';
-import { Campaign } from '@/types';
+import { Campaign, CreateCampaignParams } from '@/types';
 
 export default function MissionsView() {
-    const { authenticated } = usePrivy();
+    const { authenticated, user } = usePrivy();
     const { campaigns, loading, createCampaign, refresh } = useCampaigns();
 
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [isCreating, setIsCreating] = useState(false);
     const [selectedMission, setSelectedMission] = useState<Campaign | null>(null);
+
+    const handleCreateMission = async (params: CreateCampaignParams) => {
+        if (!user?.wallet?.address) return;
+        setIsCreating(true);
+        try {
+            await createCampaign(params, user.wallet.address);
+            setIsCreateModalOpen(false);
+            refresh();
+        } catch (error) {
+            console.error('Error creating campaign:', error);
+            alert('Failed to create mission');
+        } finally {
+            setIsCreating(false);
+        }
+    };
 
     const handleParticipate = (mission: Campaign) => {
         setSelectedMission(mission);
@@ -115,15 +131,16 @@ export default function MissionsView() {
             </div>
 
             {/* Modals */}
-            <CreateCampaignModal
-                isOpen={isCreateModalOpen}
-                onClose={() => setIsCreateModalOpen(false)}
-                onSubmit={createCampaign}
-            />
+            {isCreateModalOpen && (
+                <CreateCampaignModal
+                    onClose={() => setIsCreateModalOpen(false)}
+                    onSubmit={handleCreateMission}
+                    isLoading={isCreating}
+                />
+            )}
 
             {selectedMission && (
                 <VerificationModal
-                    isOpen={!!selectedMission}
                     onClose={() => setSelectedMission(null)}
                     missionTitle={selectedMission.title}
                     missionId={selectedMission.id}
